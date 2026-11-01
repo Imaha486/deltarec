@@ -1,0 +1,11 @@
+build/
+out/
+.vs/
+.vscode/
+*.dsf
+*.dff
+*.user
+CMakeUserPresets.json
+vs/bin/
+vs/obj/
+vs/.vs/

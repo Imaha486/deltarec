@@ -1,0 +1,75 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+            cmake_args: ''
+          - os: macos-latest
+            name: macos-universal
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          - os: ubuntu-22.04
+            name: linux-x64
+            cmake_args: -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+      - name: Build
+        run: cmake --build build --config Release -j
+      - name: Package
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME:-dev}"
+          pkg="deltarec-${tag}-${{ matrix.name }}"
+          mkdir -p "dist/$pkg"
+          if [ -f build/Release/deltarec.exe ]; then cp build/Release/deltarec.exe "dist/$pkg/"; else cp build/deltarec "dist/$pkg/"; fi
+          cp README.md README.ja.md LICENSE "dist/$pkg/"
+          cp -r tools "dist/$pkg/"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then 7z a -tzip "$pkg.zip" "$pkg" >/dev/null; else tar czf "$pkg.tar.gz" "$pkg"; fi
+          ls -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Extract changelog section
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          awk -v tag="${tag#v}" '
+            /^## / { if (found) exit; if (index($0, "[" tag "]") || index($0, tag)) { found=1; next } }
+            found { print }
+          ' CHANGELOG.md > notes.md || true
+          [ -s notes.md ] || echo "Release ${tag}" > notes.md
+          cat notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body_path: notes.md
+          generate_release_notes: true

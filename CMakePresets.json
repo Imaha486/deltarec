@@ -1,0 +1,64 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "msvc-x64-release",
+      "displayName": "x64 Release (Visual Studio, newest installed)",
+      "description": "Uses the default generator, i.e. the newest Visual Studio found (2022 or 2026).",
+      "binaryDir": "${sourceDir}/build/msvc-x64-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "msvc-x64-ninja",
+      "displayName": "x64 Release (Ninja, VS Open Folder)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/msvc-x64-ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "unix-release",
+      "displayName": "Release (macOS / Linux)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "msvc-x64-release",
+      "configurePreset": "msvc-x64-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "msvc-x64-ninja",
+      "configurePreset": "msvc-x64-ninja"
+    },
+    {
+      "name": "unix-release",
+      "configurePreset": "unix-release"
+    }
+  ]
+}
